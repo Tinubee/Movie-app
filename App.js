@@ -1,15 +1,16 @@
-import AppLoading from "expo-app-loading";
-import React, { useState } from "react";
+import React, { useCallback, useState, useEffect } from "react";
 import * as Font from "expo-font";
-import { Image, useColorScheme } from "react-native";
+import { Image, useColorScheme, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Asset } from "expo-asset";
 import { NavigationContainer } from "@react-navigation/native";
-import Tabs from "./navigation/Tabs";
-import Stack from "./navigation/Stack";
 import Root from "./navigation/Root";
 import { ThemeProvider } from "styled-components/native";
+import { QueryClient, QueryClientProvider } from "react-query";
 import { darkTheme, lightTheme } from "./styled";
+import * as SplashScreen from "expo-splash-screen";
+
+const queryClient = new QueryClient();
 
 const loadFonts = (fonts) => fonts.map((font) => Font.loadAsync(font));
 
@@ -30,20 +31,38 @@ export default function App() {
     await Promise.all([...fonts]);
   };
   const isDark = useColorScheme() === "dark";
+
+  useEffect(() => {
+    const preload = async () => {
+      try {
+        await SplashScreen.preventAutoHideAsync();
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setReady(true);
+      }
+    };
+    preload();
+  }, []);
+
+  const onLayoutRootView = useCallback(async () => {
+    if (ready) {
+      await SplashScreen.hideAsync();
+    }
+  }, [ready]);
   if (!ready) {
-    return (
-      <AppLoading
-        startAsync={startLoading}
-        onFinish={onFinish}
-        onError={console.error}
-      />
-    );
+    return null;
   }
+
   return (
-    <ThemeProvider theme={isDark ? darkTheme : lightTheme}>
-      <NavigationContainer>
-        <Root />
-      </NavigationContainer>
-    </ThemeProvider>
+    <QueryClientProvider client={queryClient}>
+      <View style={{ flex: 1 }} onLayout={onLayoutRootView}>
+        <ThemeProvider theme={isDark ? darkTheme : lightTheme}>
+          <NavigationContainer>
+            <Root />
+          </NavigationContainer>
+        </ThemeProvider>
+      </View>
+    </QueryClientProvider>
   );
 }
